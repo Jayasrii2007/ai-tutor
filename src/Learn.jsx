@@ -23,7 +23,7 @@ const reasonText = {
   "careless slip": "This looks like a small slip. Here is a quick reminder.",
 };
 
-export default function Learn({ addXP }) {
+export default function Learn({ addXP, onMaster }) {
   const [textbook, setTextbook] = useState("");
   const [author, setAuthor] = useState("");
   const [topic, setTopic] = useState("");
@@ -173,6 +173,7 @@ export default function Learn({ addXP }) {
     if (right) {
       if (attempt === 0) setScore(score + 1);
       addXP(attempt === 0 ? 10 : 5);
+      if (attempt >= 1) onMaster();
     } else if (attempt === 0) {
       askWhy(i);
     }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Learn from "./Learn.jsx";
+import Avatar from "./Avatar.jsx";
 
 function today() {
   return new Date().toDateString();
@@ -29,12 +30,18 @@ export default function App() {
       if (old.lastDay !== today()) {
         streak = old.lastDay === yesterday() ? old.streak + 1 : 1;
       }
-      const next = { xp: old.xp + amount, streak, lastDay: today() };
+            const next = { ...old, xp: old.xp + amount, streak, lastDay: today() };
       localStorage.setItem("aitutor", JSON.stringify(next));
       return next;
     });
   }
-
+  function masterConcept() {
+    setData((old) => {
+      const next = { ...old, concepts: (old.concepts || 0) + 1 };
+      localStorage.setItem("aitutor", JSON.stringify(next));
+      return next;
+    });
+  }
   const level = Math.floor(data.xp / 100) + 1;
   const intoLevel = data.xp % 100;
   const streak = data.lastDay === today() || data.lastDay === yesterday() ? data.streak : 0;
@@ -43,6 +50,7 @@ export default function App() {
     { icon: "🌱", name: "First steps", got: data.xp >= 10 },
     { icon: "📚", name: "Level 2", got: level >= 2 },
     { icon: "🔥", name: "3 day streak", got: streak >= 3 },
+    { icon: "🧠", name: "Concept Master", got: (data.concepts || 0) >= 1 },
   ];
 
   const tabs = [
@@ -101,7 +109,7 @@ export default function App() {
         )}
 
         <div style={{ display: tab === "learn" ? "block" : "none" }}>
-          <Learn addXP={addXP} />
+          <Learn addXP={addXP} onMaster={masterConcept} />
         </div>
 
         {tab === "games" && (
@@ -122,6 +130,7 @@ export default function App() {
 
         {tab === "profile" && (
           <div>
+                        <Avatar xp={data.xp} />
             <div className="soon">
               <div className="big">👤</div>
               <h2>Your profile</h2>
@@ -130,7 +139,7 @@ export default function App() {
             <div className="card">
               <p>Level: <b>{level}</b></p>
               <p>Total XP: <b>{data.xp}</b></p>
-              <p>Streak: <b>{streak} days</b></p>
+              <p>Concepts mastered: <b>{data.concepts || 0}</b> 🧠</p>
             </div>
           </div>
         )}
