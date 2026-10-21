@@ -1,122 +1,153 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
+import Learn from "./Learn.jsx";
+
+function today() {
+  return new Date().toDateString();
+}
+
+function yesterday() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toDateString();
+}
+
+function load() {
+  try {
+    return JSON.parse(localStorage.getItem("aitutor")) || { xp: 0, streak: 0, lastDay: "" };
+  } catch (e) {
+    return { xp: 0, streak: 0, lastDay: "" };
+  }
+}
 
 export default function App() {
-  const [textbook, setTextbook] = useState("");
-  const [author, setAuthor] = useState("");
-  const [topic, setTopic] = useState("");
-  const [steps, setSteps] = useState([]);
-  const [current, setCurrent] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
-  const [playing, setPlaying] = useState(false);
-  const speakId = useRef(0);
+  const [tab, setTab] = useState("home");
+  const [data, setData] = useState(load());
 
-  function stopSpeaking() {
-    speakId.current++;
-    window.speechSynthesis.cancel();
-    setPlaying(false);
-  }
-
-  function speak(index) {
-    window.speechSynthesis.cancel();
-    const myId = ++speakId.current;
-    setCurrent(index);
-    setPlaying(true);
-    const u = new SpeechSynthesisUtterance(steps[index].title + ". " + steps[index].text);
-    u.lang = "en-IN";
-    u.onend = () => {
-      if (myId !== speakId.current) return;
-      if (index < steps.length - 1) {
-        speak(index + 1);
-      } else {
-        setPlaying(false);
+  function addXP(amount) {
+    setData((old) => {
+      let streak = old.streak;
+      if (old.lastDay !== today()) {
+        streak = old.lastDay === yesterday() ? old.streak + 1 : 1;
       }
-    };
-    window.speechSynthesis.speak(u);
+      const next = { xp: old.xp + amount, streak, lastDay: today() };
+      localStorage.setItem("aitutor", JSON.stringify(next));
+      return next;
+    });
   }
 
-  async function teachMe() {
-    stopSpeaking();
-    setLoading(true);
-    setSteps([]);
-    setCurrent(0);
-    setMessage("");
-    try {
-      const url =
-        "http://localhost:3001/lesson" +
-        "?textbook=" + encodeURIComponent(textbook) +
-        "&author=" + encodeURIComponent(author) +
-        "&topic=" + encodeURIComponent(topic);
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data.steps) {
-        setSteps(data.steps);
-      } else {
-        setMessage(data.error || "Something went wrong");
-      }
-    } catch (e) {
-      setMessage("Could not reach the server. Is it running?");
-    }
-    setLoading(false);
-  }
+  const level = Math.floor(data.xp / 100) + 1;
+  const intoLevel = data.xp % 100;
+  const streak = data.lastDay === today() || data.lastDay === yesterday() ? data.streak : 0;
 
-  function goNext() {
-    stopSpeaking();
-    setCurrent(current + 1);
-  }
+  const badges = [
+    { icon: "🌱", name: "First steps", got: data.xp >= 10 },
+    { icon: "📚", name: "Level 2", got: level >= 2 },
+    { icon: "🔥", name: "3 day streak", got: streak >= 3 },
+  ];
 
-  function goBack() {
-    stopSpeaking();
-    setCurrent(current - 1);
-  }
-
-  const box = { display: "block", width: "100%", padding: 10, marginBottom: 10, fontSize: 16, boxSizing: "border-box" };
-  const btn = { padding: "10px 20px", fontSize: 16, marginRight: 10, marginBottom: 10, cursor: "pointer" };
-  const step = steps[current];
-  const youtubeUrl =
-    "https://www.youtube.com/results?search_query=" + encodeURIComponent(topic + " " + textbook);
+  const tabs = [
+    { id: "home", icon: "🏠", label: "Home" },
+    { id: "learn", icon: "📖", label: "Learn" },
+    { id: "games", icon: "🎮", label: "Games" },
+    { id: "friends", icon: "👥", label: "Friends" },
+    { id: "profile", icon: "👤", label: "Profile" },
+  ];
 
   return (
-    <div style={{ maxWidth: 600, margin: "40px auto", padding: 16, textAlign: "left" }}>
-      <h1>AI Tutor</h1>
-      <input style={box} value={textbook} onChange={(e) => setTextbook(e.target.value)} placeholder="Textbook name" />
-      <input style={box} value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Author name" />
-      <input style={box} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Topic" />
-      <button onClick={teachMe} style={btn}>Teach me</button>
-
-      {loading && <p>Thinking...</p>}
-      {message && <p>{message}</p>}
-
-      {step && (
-        <div style={{ marginTop: 24, padding: 20, border: "1px solid #ccc", borderRadius: 12 }}>
-          <div style={{ background: "#eee", borderRadius: 8, height: 8, marginBottom: 16 }}>
-            <div style={{ background: "#7c4dff", height: 8, borderRadius: 8, width: ((current + 1) / steps.length) * 100 + "%" }} />
-          </div>
-          <p style={{ margin: 0, color: "#666" }}>Step {current + 1} of {steps.length}</p>
-          <h2 style={{ marginTop: 8 }}>{step.title}</h2>
-          <p style={{ fontSize: 18, lineHeight: 1.7 }}>{step.text}</p>
-
-          <div>
-            {playing ? (
-              <button style={btn} onClick={stopSpeaking}>⏸ Pause</button>
-            ) : (
-              <button style={btn} onClick={() => speak(current)}>▶ Play lesson</button>
-            )}
-            <button style={btn} disabled={current === 0} onClick={goBack}>Back</button>
-            {current < steps.length - 1 && (
-              <button style={btn} onClick={goNext}>Next</button>
-            )}
-          </div>
-
-          {current === steps.length - 1 && (
-            <p style={{ marginTop: 8 }}>Lesson finished! 🎉 The quiz comes on Day 8.</p>
-          )}
-
-          <a href={youtubeUrl} target="_blank" rel="noreferrer">
-            🎬 Watch a video on this topic
-          </a>
+    <div className="phone">
+      <div className="topbar">
+        <div className="logo">🎓 AI Tutor</div>
+        <div className="pills">
+          <span className="pill fire">🔥 {streak}</span>
+          <span className="pill xp">⭐ {data.xp} XP</span>
         </div>
-      )}
+      </div>
+
+      <div className="content">
+        {tab === "home" && (
+          <div>
+            <h2 className="hello">Hi there 👋</h2>
+            <p className="sub">Ready to learn something new today?</p>
+
+            <div className="card level">
+              <div className="row">
+                <b>Level {level}</b>
+                <span>{intoLevel} / 100 XP</span>
+              </div>
+              <div className="bar"><div className="fill" style={{ width: intoLevel + "%" }} /></div>
+            </div>
+
+            <div className="card streak">
+              <div className="big">🔥 {streak} day streak</div>
+              <p className="sub">Learn something every day to keep it growing.</p>
+            </div>
+
+            <div className="card mission">
+              <b>🎯 Today's mission</b>
+              <p>Learn one topic and finish the quiz.</p>
+              <button className="main-btn" onClick={() => setTab("learn")}>Start learning</button>
+            </div>
+
+            <h3>Your badges</h3>
+            <div className="badges">
+              {badges.map((b) => (
+                <div key={b.name} className={"badge " + (b.got ? "on" : "off")}>
+                  <div className="badge-icon">{b.got ? b.icon : "🔒"}</div>
+                  <div>{b.name}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div style={{ display: tab === "learn" ? "block" : "none" }}>
+          <Learn addXP={addXP} />
+        </div>
+
+        {tab === "games" && (
+          <div className="soon">
+            <div className="big">🎮</div>
+            <h2>Games and coding challenges</h2>
+            <p>Coming soon. Learn concepts by playing and earn XP.</p>
+          </div>
+        )}
+
+        {tab === "friends" && (
+          <div className="soon">
+            <div className="big">👥</div>
+            <h2>Study with friends</h2>
+            <p>Coming soon. Add friends and study together.</p>
+          </div>
+        )}
+
+        {tab === "profile" && (
+          <div>
+            <div className="soon">
+              <div className="big">👤</div>
+              <h2>Your profile</h2>
+              <p>Login and learning history are coming soon.</p>
+            </div>
+            <div className="card">
+              <p>Level: <b>{level}</b></p>
+              <p>Total XP: <b>{data.xp}</b></p>
+              <p>Streak: <b>{streak} days</b></p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="nav">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            className={"nav-btn " + (tab === t.id ? "active" : "")}
+            onClick={() => setTab(t.id)}
+          >
+            <span className="nav-icon">{t.icon}</span>
+            <span>{t.label}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
