@@ -16,10 +16,18 @@ app.get("/", (req, res) => {
 
 app.get("/lesson", async (req, res) => {
   try {
+    const textbook = req.query.textbook || "a general textbook";
+    const author = req.query.author || "an unknown author";
     const topic = req.query.topic || "photosynthesis";
+
+    const prompt = `A college student is studying the textbook "${textbook}" by ${author}.
+Teach the topic "${topic}" the way it would be covered in that textbook, but in your own words.
+Write a short, simple, friendly lesson of about 150 words.
+Use plain text only. Do not use markdown symbols like ** or #, and do not use LaTeX or dollar signs. Write formulas in plain words, like F = m x a.`;
+
     const response = await ai.models.generateContent({
       model: MODEL,
-      contents: `Teach "${topic}" to a college student in a short, simple lesson of about 150 words. Use a friendly tone.`,
+      contents: prompt,
     });
     res.json({ lesson: response.text });
   } catch (err) {
