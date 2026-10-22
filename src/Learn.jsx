@@ -228,7 +228,7 @@ export default function Learn({ addXP, onMaster }) {
       <input style={box} value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Author name" />
       <input style={box} value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="Topic" />
       <button onClick={teachMe} style={btn}>Teach me</button>
-            <Video textbook={textbook} topic={topic} />
+             <Video textbook={textbook} topic={topic} addXP={addXP} />
 
       {loading && <p>Thinking...</p>}
       {message && <p>{message}</p>}
