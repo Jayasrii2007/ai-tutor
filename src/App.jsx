@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Learn from "./Learn.jsx";
 import Avatar from "./Avatar.jsx";
+import Coding from "./Coding.jsx";
 
 function today() {
   return new Date().toDateString();
@@ -112,14 +113,11 @@ export default function App() {
           <Learn addXP={addXP} onMaster={masterConcept} />
         </div>
 
-        {tab === "games" && (
-          <div className="soon">
-            <div className="big">🎮</div>
-            <h2>Games and coding challenges</h2>
-            <p>Coming soon. Learn concepts by playing and earn XP.</p>
+                {tab === "games" && (
+          <div>
+            <Coding addXP={addXP} />
           </div>
         )}
-
         {tab === "friends" && (
           <div className="soon">
             <div className="big">👥</div>
