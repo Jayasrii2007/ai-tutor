@@ -122,6 +122,7 @@ Reply ONLY with JSON in exactly this shape:
     res.status(500).json({ error: "Problem: " + err.message });
   }
 });
+
 app.get("/video", async (req, res) => {
   try {
     const textbook = req.query.textbook || "a general textbook";
@@ -142,10 +143,11 @@ Make exactly 6 scenes. Each scene has:
 - "title": a short title,
 - "narration": what the teacher says out loud, 45 to 60 words, friendly and easy to follow,
 - "diagram": a list of 3 or 4 very short labels (maximum 4 words each) that show the idea as a flow from left to right,
+- "emojis": a list with the same length as "diagram", with one fitting emoji for each label,
 - "quiz": null for scenes 1, 2, 4 and 6. For scenes 3 and 5 it is a question about what was just taught, in this shape: {"question":"...","options":["...","...","..."],"answer":0} where answer is the number 0, 1 or 2 of the correct option.
 Use plain text only. No markdown symbols, no LaTeX, no dollar signs.
 Reply ONLY with JSON in exactly this shape:
-{"scenes":[{"title":"...","narration":"...","diagram":["...","...","..."],"quiz":null}]}`;
+{"scenes":[{"title":"...","narration":"...","diagram":["...","...","..."],"emojis":["...","...","..."],"quiz":null}]}`;
 
     const data = toJSON(await askAI(prompt));
     res.json({ scenes: data.scenes });

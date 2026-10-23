@@ -22,6 +22,7 @@ export default function Video({ textbook, topic, addXP }) {
   const [quiz, setQuiz] = useState(null);
   const [remaking, setRemaking] = useState(false);
   const [note, setNote] = useState("");
+  const [mood, setMood] = useState("happy");
   const runId = useRef(0);
   const timers = useRef([]);
   const doneQuiz = useRef(new Set());
@@ -136,11 +137,13 @@ export default function Video({ textbook, topic, addXP }) {
     wrongCount.current++;
     const style = styles[(wrongCount.current - 1) % styles.length];
     setRemaking(true);
+    setMood("think");
     try {
       const fresh = await fetchScenes(style);
       const list = [...scenes.slice(0, i + 1), ...fresh.slice(i + 1)];
       setScenes(list);
       setNote("Now teaching " + styleNames[style] + " 💡");
+      setMood("happy");
       setRemaking(false);
       goOn(i, list);
     } catch (e) {
@@ -182,6 +185,8 @@ export default function Video({ textbook, topic, addXP }) {
             total={scenes.length}
             shown={shown}
             progress={(index + (finished ? 1 : 0.5)) / scenes.length}
+            speaking={playing}
+            mood={mood}
           />
 
           <div>
@@ -197,8 +202,8 @@ export default function Video({ textbook, topic, addXP }) {
             <button style={btn} onClick={openDoubt}>🙋 I have a doubt</button>
           </div>
 
-          {quiz && <VideoQuiz key={quiz.index + "-" + wrongCount.current} quiz={quiz.data} onDone={quizDone} />}
-
+          
+          {quiz && <VideoQuiz key={quiz.index + "-" + wrongCount.current} quiz={quiz.data} onDone={quizDone} onAnswer={(c) => setMood(c ? "happy" : "sad")} />}
           {remaking && <p>🧠 Making the next part in a different way for you...</p>}
 
           {asking && (
