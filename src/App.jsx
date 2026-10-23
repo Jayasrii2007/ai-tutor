@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "./firebase.js";
 import Learn from "./Learn.jsx";
 import Avatar from "./Avatar.jsx";
 import Coding from "./Coding.jsx";
@@ -22,11 +24,23 @@ function load() {
   }
 }
 
-export default function App() {
+export default function App({ profile, uid, onLogout }) {
   const [tab, setTab] = useState("home");
-  const [data, setData] = useState(load());
+  const [data, setData] = useState(
+    profile
+      ? { xp: profile.xp || 0, streak: profile.streak || 0, lastDay: profile.lastDay || "", concepts: profile.concepts || 0 }
+      : load()
+  );
   const [gameTab, setGameTab] = useState("boss");
-
+  useEffect(() => {
+    if (!uid) return;
+    updateDoc(doc(db, "users", uid), {
+      xp: data.xp,
+      streak: data.streak,
+      lastDay: data.lastDay,
+      concepts: data.concepts || 0,
+    }).catch(() => {});
+  }, [data.xp, data.streak, data.lastDay, data.concepts]);
   function addXP(amount) {
     setData((old) => {
       let streak = old.streak;
@@ -77,7 +91,7 @@ export default function App() {
       <div className="content">
         {tab === "home" && (
           <div>
-            <h2 className="hello">Hi there 👋</h2>
+            <h2 className="hello">Hi {profile ? profile.name : "there"} 👋</h2>
             <p className="sub">Ready to learn something new today?</p>
 
             <div className="card level">
@@ -109,7 +123,7 @@ export default function App() {
               ))}
             </div>
           </div>
-        )}
+       )}
 
         <div style={{ display: tab === "learn" ? "block" : "none" }}>
           <Learn addXP={addXP} onMaster={masterConcept} />
@@ -147,6 +161,15 @@ export default function App() {
 
         {tab === "profile" && (
           <div>
+                        {profile && (
+              <div className="card">
+                <p style={{ margin: "0 0 6px", fontSize: 20 }}><b>{profile.name}</b></p>
+                <p style={{ margin: "0 0 6px" }}>🎓 {profile.college}</p>
+                <p style={{ margin: "0 0 6px" }}>🎯 Goal: {profile.goal}</p>
+                <p style={{ margin: "0 0 10px" }}>🔑 Your friend code: <b>{profile.friendCode}</b></p>
+                <button className="main-btn" onClick={onLogout}>Log out</button>
+              </div>
+            )}
                         <Avatar xp={data.xp} />
             <div className="soon">
               <div className="big">👤</div>
