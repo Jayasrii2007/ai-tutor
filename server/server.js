@@ -21,6 +21,7 @@ async function askAI(prompt) {
           contents: prompt,
           config: { responseMimeType: "application/json" },
         });
+                toJSON(response.text);
         return response.text;
       } catch (err) {
         lastError = err;
@@ -35,7 +36,12 @@ async function askAI(prompt) {
 }
 
 function toJSON(raw) {
-  return JSON.parse(raw.replace(/```json|```/g, "").trim());
+  let text = raw.replace(/```json|```/g, "").trim();
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start >= 0 && end > start) text = text.slice(start, end + 1);
+  text = text.replace(/,\s*([}\]])/g, "$1");
+  return JSON.parse(text);
 }
 
 app.get("/", (req, res) => {
@@ -179,5 +185,25 @@ Reply ONLY with JSON in exactly this shape:
     res.status(500).json({ error: "Problem: " + err.message });
   }
 });
+app.get("/boss", async (req, res) => {
+  try {
+    const textbook = req.query.textbook || "a general textbook";
+    const topic = req.query.topic || "photosynthesis";
 
+    const prompt = `Make a fun boss battle quiz for a college student about "${topic}" from the textbook "${textbook}".
+Give the boss a funny name related to the topic, maximum 3 words (for example: Captain Inertia).
+Make 8 short multiple choice questions, each with exactly 3 options.
+Each question has: "question" (maximum 20 words), "options", "answer" (the number 0, 1 or 2 of the correct option), and "why" (one short, kind sentence that explains the right answer).
+Every question must be clear, with exactly one correct answer.
+Use plain text only. No markdown symbols, no LaTeX, no dollar signs.
+Reply ONLY with JSON in exactly this shape:
+{"boss":"...","questions":[{"question":"...","options":["...","...","..."],"answer":0,"why":"..."}]}`;
+
+    const data = toJSON(await askAI(prompt));
+    res.json({ boss: data.boss, questions: data.questions });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Problem: " + err.message });
+  }
+});
 app.listen(3001, () => console.log("Server running on port 3001"));

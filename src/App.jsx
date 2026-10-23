@@ -2,6 +2,7 @@ import { useState } from "react";
 import Learn from "./Learn.jsx";
 import Avatar from "./Avatar.jsx";
 import Coding from "./Coding.jsx";
+import Boss from "./Boss.jsx";
 
 function today() {
   return new Date().toDateString();
@@ -24,6 +25,7 @@ function load() {
 export default function App() {
   const [tab, setTab] = useState("home");
   const [data, setData] = useState(load());
+  const [gameTab, setGameTab] = useState("boss");
 
   function addXP(amount) {
     setData((old) => {
@@ -113,9 +115,26 @@ export default function App() {
           <Learn addXP={addXP} onMaster={masterConcept} />
         </div>
 
-                {tab === "games" && (
+                        {tab === "games" && (
           <div>
-            <Coding addXP={addXP} />
+            <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+              {[
+                { id: "boss", label: "👾 Boss" },
+                
+                { id: "coding", label: "💻 Coding" },
+              ].map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => setGameTab(g.id)}
+                  style={{ flex: 1, padding: 10, fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", border: "2px solid #7c4dff", background: gameTab === g.id ? "#7c4dff" : "white", color: gameTab === g.id ? "white" : "#7c4dff" }}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+            {gameTab === "boss" && <Boss addXP={addXP} />}
+            
+            {gameTab === "coding" && <Coding addXP={addXP} />}
           </div>
         )}
         {tab === "friends" && (
