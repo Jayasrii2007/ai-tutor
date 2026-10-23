@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import VideoStage from "./VideoStage.jsx";
 import VideoQuiz from "./VideoQuiz.jsx";
 import DoubtBox from "./DoubtBox.jsx";
+import Activity from "./Activity.jsx";
 
 const styles = ["simple", "example", "visual"];
 const styleNames = {
@@ -26,6 +27,8 @@ export default function Video({ textbook, topic, addXP }) {
   const runId = useRef(0);
   const timers = useRef([]);
   const doneQuiz = useRef(new Set());
+  const doneActivity = useRef(new Set());
+  const [activity, setActivity] = useState(null);
   const wrongCount = useRef(0);
 
   function clearTimers() {
@@ -80,12 +83,19 @@ export default function Video({ textbook, topic, addXP }) {
     const u = new SpeechSynthesisUtterance(scene.title + ". " + scene.narration);
     u.lang = "en-IN";
     u.rate = 0.95;
-    u.onend = () => {
+        u.onend = () => {
       if (myId !== runId.current) return;
       setShown(labels.length);
       if (scene.quiz && !doneQuiz.current.has(i)) {
         setPlaying(false);
         setQuiz({ index: i, data: scene.quiz });
+        return;
+      }
+      const kind = i === 1 ? "order" : i === 3 ? "match" : "";
+      const ok = kind === "match" ? (scene.emojis || []).length === labels.length : labels.length > 1;
+      if (kind && ok && !doneActivity.current.has(i)) {
+        setPlaying(false);
+        setActivity({ index: i, kind });
         return;
       }
       goOn(i, list);
@@ -112,6 +122,7 @@ export default function Video({ textbook, topic, addXP }) {
     setQuiz(null);
     setNote("");
     doneQuiz.current = new Set();
+    doneActivity.current = new Set();
     wrongCount.current = 0;
     try {
       const list = await fetchScenes("balanced");
@@ -151,7 +162,13 @@ export default function Video({ textbook, topic, addXP }) {
       goOn(i, scenes);
     }
   }
-
+    function activityDone() {
+    const a = activity;
+    doneActivity.current.add(a.index);
+    setActivity(null);
+    if (addXP) addXP(3);
+    goOn(a.index, scenes);
+  }
   function openDoubt() {
     stop();
     setAsking(true);
@@ -204,6 +221,15 @@ export default function Video({ textbook, topic, addXP }) {
 
           
           {quiz && <VideoQuiz key={quiz.index + "-" + wrongCount.current} quiz={quiz.data} onDone={quizDone} onAnswer={(c) => setMood(c ? "happy" : "sad")} />}
+                    {activity && activity.index === index && (
+            <Activity
+              key={"act-" + index}
+              type={activity.kind}
+              labels={scene.diagram || []}
+              emojis={scene.emojis || []}
+              onDone={activityDone}
+            />
+          )}
           {remaking && <p>🧠 Making the next part in a different way for you...</p>}
 
           {asking && (
