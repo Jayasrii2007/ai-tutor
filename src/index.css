@@ -120,3 +120,6 @@ body {
 }
 .nav-btn.active { color: #7c4dff; font-weight: 700; }
 .nav-icon { font-size: 22px; }
+.phone.focus { padding-bottom: 20px; }
+.phone.focus .topbar,
+.phone.focus .nav { display: none; }

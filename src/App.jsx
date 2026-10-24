@@ -6,6 +6,7 @@ import Avatar from "./Avatar.jsx";
 import Coding from "./Coding.jsx";
 import Boss from "./Boss.jsx";
 import Friends from "./Friends.jsx";
+import StudyRoom from "./StudyRoom.jsx";
 function today() {
   return new Date().toDateString();
 }
@@ -32,6 +33,40 @@ export default function App({ profile, uid, onLogout }) {
       : load()
   );
   const [gameTab, setGameTab] = useState("boss");
+  const [friendsTab, setFriendsTab] = useState("list");
+    const [focus, setFocus] = useState(null);
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!focus) return;
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [focus]);
+
+  function startFocus() {
+    const ok = window.confirm(
+      "For the best focus, turn on Do Not Disturb on your device so nothing interrupts you. Start focus mode?"
+    );
+    if (!ok) return;
+    setTab("learn");
+    setFocus(Date.now());
+    try {
+      document.documentElement.requestFullscreen();
+    } catch (e) {}
+  }
+
+  function endFocus() {
+    const mins = Math.floor((Date.now() - focus) / 60000);
+    setFocus(null);
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+    } catch (e) {}
+    if (mins >= 1) {
+      const gain = Math.min(mins, 30);
+      addXP(gain);
+      window.alert("Great focus! " + mins + " minutes. +" + gain + " XP 🎯");
+    }
+  }
   useEffect(() => {
     if (!uid) return;
     updateDoc(doc(db, "users", uid), {
@@ -79,7 +114,34 @@ export default function App({ profile, uid, onLogout }) {
   ];
 
   return (
-    <div className="phone">
+        <div className={"phone" + (focus ? " focus" : "")}>
+                {focus && (
+        <div
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 20,
+            background: "#1e1b3a",
+            color: "white",
+            padding: "10px 16px",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+        >
+          <span>
+            🎯 Focus mode · ⏱{" "}
+            {String(Math.floor((Date.now() - focus) / 60000)).padStart(2, "0")}:
+            {String(Math.floor((Date.now() - focus) / 1000) % 60).padStart(2, "0")}
+          </span>
+          <button
+            onClick={endFocus}
+            style={{ padding: "6px 14px", fontSize: 15, borderRadius: 16, border: "none", cursor: "pointer" }}
+          >
+            Exit
+          </button>
+        </div>
+      )}
       <div className="topbar">
         <div className="logo">🎓 AI Tutor</div>
         <div className="pills">
@@ -111,6 +173,9 @@ export default function App({ profile, uid, onLogout }) {
               <b>🎯 Today's mission</b>
               <p>Learn one topic and finish the quiz.</p>
               <button className="main-btn" onClick={() => setTab("learn")}>Start learning</button>
+                            <button className="main-btn" style={{ marginLeft: 8, background: "#1e1b3a" }} onClick={startFocus}>
+                🎯 Focus mode
+              </button>
             </div>
 
             <h3>Your badges</h3>
@@ -152,8 +217,27 @@ export default function App({ profile, uid, onLogout }) {
           </div>
         )}
         
-        {tab === "friends" && profile && (
-          <Friends uid={uid} profile={profile} me={{ name: profile.name, xp: data.xp, streak }} />
+                {tab === "friends" && profile && (
+          <div>
+            <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+              {[
+                { id: "list", label: "👥 Friends" },
+                { id: "room", label: "🏫 Study room" },
+              ].map((g) => (
+                <button
+                  key={g.id}
+                  onClick={() => setFriendsTab(g.id)}
+                  style={{ flex: 1, padding: 10, fontSize: 14, fontWeight: 700, borderRadius: 12, cursor: "pointer", border: "2px solid #7c4dff", background: friendsTab === g.id ? "#7c4dff" : "white", color: friendsTab === g.id ? "white" : "#7c4dff" }}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+            {friendsTab === "list" && (
+              <Friends uid={uid} profile={profile} me={{ name: profile.name, xp: data.xp, streak }} />
+            )}
+            {friendsTab === "room" && <StudyRoom uid={uid} profile={profile} />}
+          </div>
         )}
         {tab === "profile" && (
           <div>
