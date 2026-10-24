@@ -5,7 +5,7 @@ import Learn from "./Learn.jsx";
 import Avatar from "./Avatar.jsx";
 import Coding from "./Coding.jsx";
 import Boss from "./Boss.jsx";
-
+import Friends from "./Friends.jsx";
 function today() {
   return new Date().toDateString();
 }
@@ -151,14 +151,10 @@ export default function App({ profile, uid, onLogout }) {
             {gameTab === "coding" && <Coding addXP={addXP} />}
           </div>
         )}
-        {tab === "friends" && (
-          <div className="soon">
-            <div className="big">👥</div>
-            <h2>Study with friends</h2>
-            <p>Coming soon. Add friends and study together.</p>
-          </div>
+        
+        {tab === "friends" && profile && (
+          <Friends uid={uid} profile={profile} me={{ name: profile.name, xp: data.xp, streak }} />
         )}
-
         {tab === "profile" && (
           <div>
                         {profile && (
