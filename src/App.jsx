@@ -5,8 +5,9 @@ import Learn from "./Learn.jsx";
 import Avatar from "./Avatar.jsx";
 import Coding from "./Coding.jsx";
 import Boss from "./Boss.jsx";
-import Friends from "./Friends.jsx";
+import Chat from "./Chat.jsx";
 import StudyRoom from "./StudyRoom.jsx";
+import Friends from "./Friends.jsx";
 function today() {
   return new Date().toDateString();
 }
@@ -108,6 +109,7 @@ export default function App({ profile, uid, onLogout }) {
   const tabs = [
     { id: "home", icon: "🏠", label: "Home" },
     { id: "learn", icon: "📖", label: "Learn" },
+    { id: "chat", icon: "💬", label: "Ask AI" },
     { id: "games", icon: "🎮", label: "Games" },
     { id: "friends", icon: "👥", label: "Friends" },
     { id: "profile", icon: "👤", label: "Profile" },
@@ -193,7 +195,10 @@ export default function App({ profile, uid, onLogout }) {
         <div style={{ display: tab === "learn" ? "block" : "none" }}>
           <Learn addXP={addXP} onMaster={masterConcept} />
         </div>
-
+        <div style={{ display: tab === "chat" ? "block" : "none" }}>
+          <Chat />
+        </div>
+  
                         {tab === "games" && (
           <div>
             <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
