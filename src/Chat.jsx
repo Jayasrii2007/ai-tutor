@@ -17,6 +17,38 @@ function load() {
   }
 }
 
+function readImage(file) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      const max = 1400;
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(img.width * scale);
+      c.height = Math.round(img.height * scale);
+      c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+      const dataUrl = c.toDataURL("image/jpeg", 0.85);
+      URL.revokeObjectURL(url);
+      resolve({ preview: dataUrl, data: dataUrl.split(",")[1], mime: "image/jpeg" });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("bad image"));
+    };
+    img.src = url;
+  });
+}
+
+function readPdf(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve({ preview: "", data: String(r.result).split(",")[1], mime: "application/pdf" });
+    r.onerror = () => reject(new Error("bad pdf"));
+    r.readAsDataURL(file);
+  });
+}
+
 function Inline({ text }) {
   const parts = text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g);
   return (
@@ -102,23 +134,30 @@ function Rich({ text }) {
   );
 }
 
-export default function Chat() {
-  const [messages, setMessages] = useState(load());
+export default function Chat({ initialMessages, onChange }) {
+  const [messages, setMessages] = useState(initialMessages || load());
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
   const [speakingIndex, setSpeakingIndex] = useState(-1);
   const [copiedIndex, setCopiedIndex] = useState(-1);
+  const [attached, setAttached] = useState(null);
+  const [fileMsg, setFileMsg] = useState("");
   const boxRef = useRef(null);
   const recRef = useRef(null);
   const speakId = useRef(0);
   const abortRef = useRef(null);
+  const fileRef = useRef(null);
   const canListen = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
 
   useEffect(() => {
-    try {
-      localStorage.setItem("aitutor-chat", JSON.stringify(messages.slice(-30)));
-    } catch (e) {}
+    if (onChange) {
+      onChange(messages);
+    } else {
+      try {
+        localStorage.setItem("aitutor-chat", JSON.stringify(messages.slice(-30)));
+      } catch (e) {}
+    }
     if (boxRef.current) boxRef.current.scrollTop = boxRef.current.scrollHeight;
   }, [messages]);
 
@@ -130,6 +169,30 @@ export default function Chat() {
     };
   }, []);
 
+  async function onFile(e) {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    setFileMsg("");
+    try {
+      if (f.type.startsWith("image/")) {
+        const r = await readImage(f);
+        setAttached({ ...r, name: f.name || "picture" });
+      } else if (f.type === "application/pdf") {
+        if (f.size > 5 * 1024 * 1024) {
+          setFileMsg("That PDF is bigger than 5 MB. Please use a smaller one.");
+          return;
+        }
+        const r = await readPdf(f);
+        setAttached({ ...r, name: f.name || "document.pdf" });
+      } else {
+        setFileMsg("Please choose a picture (JPG, PNG, WEBP) or a PDF.");
+      }
+    } catch (err) {
+      setFileMsg("I could not open that file. Try another one, or take a screenshot.");
+    }
+  }
+
   async function ask(history) {
     setBusy(true);
     const controller = new AbortController();
@@ -140,7 +203,10 @@ export default function Chat() {
       const res = await fetch(API + "/chat-stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: history.filter((m) => !m.failed).slice(-12) }),
+        body: JSON.stringify({
+          messages: history.filter((m) => !m.failed).slice(-12),
+          attachment: attached ? { mime: attached.mime, data: attached.data } : undefined,
+        }),
         signal: controller.signal,
       });
       if (!res.ok) {
@@ -180,10 +246,10 @@ export default function Chat() {
   }
 
   function send(q) {
-    const question = (q === undefined ? text : q).trim();
+    const question = (q === undefined ? text : q).trim() || (attached ? "Please explain this file." : "");
     if (!question || busy) return;
     setText("");
-    ask([...messages, { role: "user", text: question }]);
+    ask([...messages, { role: "user", text: question, file: attached ? attached.name : "" }]);
   }
 
   function regenerate() {
@@ -265,11 +331,11 @@ export default function Chat() {
           <button style={btn} onClick={clearChat}>🗑 Clear chat</button>
         )}
       </div>
-      <p className="sub">Ask me anything about your studies. I explain in simple words, with real-life examples.</p>
+      <p className="sub">Ask me anything about your studies. Attach a picture or PDF with 📎 if you want.</p>
 
       <div
         ref={boxRef}
-        style={{ height: "52vh", minHeight: 280, overflowY: "auto", background: "#faf8ff", border: "1px solid #e3dbff", borderRadius: 14, padding: 12, marginBottom: 10 }}
+        style={{ height: "48vh", minHeight: 260, overflowY: "auto", background: "#faf8ff", border: "1px solid #e3dbff", borderRadius: 14, padding: 12, marginBottom: 10 }}
       >
         {messages.length === 0 && (
           <div>
@@ -306,7 +372,12 @@ export default function Chat() {
                   border: m.role === "user" ? "none" : "1px solid #e3dbff",
                 }}
               >
-                {m.role === "user" || m.failed ? (
+                {m.role === "user" ? (
+                  <>
+                    {m.file ? <div style={{ fontSize: 13, opacity: 0.9, marginBottom: 4 }}>📎 {m.file}</div> : null}
+                    {m.text}
+                  </>
+                ) : m.failed ? (
                   m.text
                 ) : streaming && !m.text ? (
                   "🤔 Thinking..."
@@ -337,7 +408,37 @@ export default function Chat() {
         })}
       </div>
 
+      {attached && (
+        <div
+          style={{ display: "flex", alignItems: "center", gap: 8, background: "#f1edff", border: "1px solid #d9ccff", borderRadius: 12, padding: 8, marginBottom: 8 }}
+        >
+          {attached.preview ? (
+            <img src={attached.preview} alt="" style={{ height: 44, borderRadius: 8 }} />
+          ) : (
+            <span style={{ fontSize: 28 }}>📄</span>
+          )}
+          <div style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
+            <div style={{ fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {attached.name}
+            </div>
+            <div style={{ color: "#666" }}>I will use this file when I answer. Remove it when you are done.</div>
+          </div>
+          <button style={btn} onClick={() => setAttached(null)}>✖</button>
+        </div>
+      )}
+      {fileMsg && <p style={{ color: "#c92a2a", fontWeight: 700, margin: "0 0 8px" }}>{fileMsg}</p>}
+
       <div style={{ display: "flex", gap: 8 }}>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*,application/pdf"
+          onChange={onFile}
+          style={{ display: "none" }}
+        />
+        <button style={{ ...btn, fontSize: 20 }} onClick={() => fileRef.current && fileRef.current.click()} title="Attach a picture or PDF">
+          📎
+        </button>
         {canListen && (
           <button
             onClick={listen}
@@ -351,20 +452,20 @@ export default function Chat() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && send()}
-          placeholder={listening ? "Listening... speak now" : "Type your question"}
+          placeholder={listening ? "Listening... speak now" : attached ? "Ask about your file" : "Type your question"}
           style={{ flex: 1, minWidth: 0, padding: 12, fontSize: 16, borderRadius: 12, border: "1px solid #ccc" }}
         />
         {busy ? (
           <button className="main-btn" onClick={stop}>⏹ Stop</button>
         ) : (
-          <button className="main-btn" onClick={() => send()} disabled={!text.trim()}>
+          <button className="main-btn" onClick={() => send()} disabled={!text.trim() && !attached}>
             Send
           </button>
         )}
       </div>
 
       <p style={{ color: "#888", fontSize: 12, marginTop: 8 }}>
-        AI can make mistakes. Please check important facts with your teacher or textbook.
+        AI can make mistakes. Please check important facts with your teacher or textbook. Do not attach personal documents.
       </p>
     </div>
   );

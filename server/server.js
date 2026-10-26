@@ -304,9 +304,10 @@ const CHAT_SYSTEM = `You are a friendly, patient AI tutor inside a study app for
 Answer the student's question clearly and simply. Give the short answer first, then one real-life example, then offer a follow-up like "Want a quick quiz on this?".
 Keep answers under 200 words unless the student asks for more detail.
 You may use simple formatting: **bold** for key words, lines starting with - for bullet points, lines starting with 1. 2. 3. for steps, and triple backticks for code. Do not use tables, # headings, LaTeX or dollar signs. Write maths in plain text, like x^2 or F = m x a.
-Never scold the student. If you are not sure about something, say so honestly.
+Never scold the student. If the student attaches a picture or a PDF, first say in one line what it shows, then explain it simply. If it is a homework or exam question, teach the steps and hints so the student can solve it, and show the final answer last. If you cannot read it, say so and ask for a clearer file.If you are not sure about something, say so honestly.
 If a student seems very sad, stressed, or mentions hurting themselves, reply kindly and encourage them to talk to a trusted person or a local helpline.
 Politely decline requests that are harmful or dishonest, and offer a helpful alternative.`;
+
 
 function chatContents(messages) {
   const history = Array.isArray(messages) ? messages.slice(-12) : [];
@@ -324,6 +325,15 @@ app.post("/chat-stream", async (req, res) => {
   const contents = chatContents(req.body.messages);
   if (!contents.length || contents[contents.length - 1].role !== "user") {
     return res.status(400).json({ error: "Please type a question." });
+  }
+
+  const att = req.body.attachment;
+  if (att && att.data) {
+    const okTypes = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
+    if (!okTypes.includes(att.mime) || att.data.length > 9000000) {
+      return res.status(400).json({ error: "That file is not supported or is too big. Use a JPG, PNG, WEBP or PDF under 5 MB." });
+    }
+    contents[contents.length - 1].parts.unshift({ inlineData: { mimeType: att.mime, data: att.data } });
   }
 
   res.setHeader("Content-Type", "text/plain; charset=utf-8");

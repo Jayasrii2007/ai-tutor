@@ -5,9 +5,9 @@ import Learn from "./Learn.jsx";
 import Avatar from "./Avatar.jsx";
 import Coding from "./Coding.jsx";
 import Boss from "./Boss.jsx";
-import Chat from "./Chat.jsx";
 import StudyRoom from "./StudyRoom.jsx";
 import Friends from "./Friends.jsx";
+import Chat from "./ChatHistory.jsx";
 function today() {
   return new Date().toDateString();
 }
